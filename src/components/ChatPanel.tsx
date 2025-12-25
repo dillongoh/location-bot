@@ -28,48 +28,46 @@ export default function ChatPanel({ onLocationsFound }: ChatPanelProps) {
 
   // Extract location data from the most recent tool result and update map
   useEffect(() => {
-    if (!onLocationsFound) return;
+    if (!onLocationsFound || messages.length === 0) return;
 
-    // Find the most recent assistant message with a completed tool result
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const message = messages[i];
-      if (message.role !== 'assistant' || !message.parts?.length) continue;
-      
-      const toolPart = message.parts.find((p: any) => 
-        p.type === 'tool-search_location' && 
-        p.state === 'output-available' &&
-        (p as any).output?.features
-      );
-      
-      if (!toolPart) continue;
-      
-      const toolOutput = (toolPart as any).output;
-      const locations = toolOutput.features || [];
-      
-      if (locations.length === 0) continue;
-      
-      // Create a unique key for this tool result to detect changes
-      const toolResultKey = `${message.id}-${JSON.stringify(toolOutput)}`;
-      
-      // Skip if we've already processed this exact tool result
-      if (toolResultKey === lastProcessedToolResultRef.current) return;
-      
-      lastProcessedToolResultRef.current = toolResultKey;
-      
-      const limitedLocations = locations.slice(0, 10);
-      
-      // Only update if different from last sent
-      const lastSent = lastSentLocationsRef.current;
-      const isSame = JSON.stringify(lastSent) === JSON.stringify(limitedLocations);
-      if (!isSame) {
-        if (DEBUG) {
-          console.log('📍 Locations found:', limitedLocations.length);
-        }
-        onLocationsFound(limitedLocations);
-        lastSentLocationsRef.current = limitedLocations;
+    // Only check the latest message - since we process incrementally and track processed results,
+    // we don't need to search backwards through all messages
+    const latestMessage = messages[messages.length - 1];
+    
+    if (latestMessage.role !== 'assistant' || !latestMessage.parts?.length) return;
+    
+    const toolPart = latestMessage.parts.find((p: any) => 
+      p.type === 'tool-search_location' && 
+      p.state === 'output-available' &&
+      (p as any).output?.features
+    );
+    
+    if (!toolPart) return;
+    
+    const toolOutput = (toolPart as any).output;
+    const locations = toolOutput.features || [];
+    
+    if (locations.length === 0) return;
+    
+    // Create a unique key for this tool result to detect changes
+    const toolResultKey = `${latestMessage.id}-${JSON.stringify(toolOutput)}`;
+    
+    // Skip if we've already processed this exact tool result
+    if (toolResultKey === lastProcessedToolResultRef.current) return;
+    
+    lastProcessedToolResultRef.current = toolResultKey;
+    
+    const limitedLocations = locations.slice(0, 10);
+    
+    // Only update if different from last sent
+    const lastSent = lastSentLocationsRef.current;
+    const isSame = JSON.stringify(lastSent) === JSON.stringify(limitedLocations);
+    if (!isSame) {
+      if (DEBUG) {
+        console.log('📍 Locations found:', limitedLocations.length);
       }
-      
-      return; // Found and processed the most recent tool result, exit
+      onLocationsFound(limitedLocations);
+      lastSentLocationsRef.current = limitedLocations;
     }
   }, [messages, onLocationsFound]);
 
