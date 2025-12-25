@@ -26,7 +26,7 @@ export async function getReviewRating(locationName: string): Promise<ReviewRatin
       throw new Error('Google Places API key not configured. Please set GOOGLE_PLACES_API_KEY environment variable.');
     }
 
-    // Step 1: Text search using Places API (New)
+    // Text search using Places API (New) - returns all needed data in one call
     const searchUrl = 'https://places.googleapis.com/v1/places:searchText';
     
     // Add timeout to prevent hanging requests
@@ -67,47 +67,15 @@ export async function getReviewRating(locationName: string): Promise<ReviewRatin
     }
 
     const place = searchData.places[0];
-    const placeId = place.id;
 
-    // Step 2: Get detailed place information including reviews using Places API (New)
-    const detailsUrl = `https://places.googleapis.com/v1/places/${placeId}`;
-    
-    // Add timeout to prevent hanging requests
-    const detailsController = new AbortController();
-    const detailsTimeout = setTimeout(() => detailsController.abort(), 10000); // 10 second timeout
-    
-    let detailsRes;
-    try {
-      detailsRes = await fetch(detailsUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': apiKey,
-          'X-Goog-FieldMask': 'id,displayName,formattedAddress,rating,userRatingCount',
-        },
-        signal: detailsController.signal,
-      });
-    } finally {
-      clearTimeout(detailsTimeout);
-    }
-
-    if (!detailsRes.ok) {
-      const errorText = await detailsRes.text();
-      throw new Error(`Google Places API (New) details error: ${detailsRes.status} - ${errorText}`);
-    }
-
-    const result = await detailsRes.json();
-
-    // Extract review rating information from Places API (New) format
-    // Use result data if available, otherwise fall back to place data from search
-    const finalData = result || place;
-    
+    // Extract review rating information directly from search result
+    // The searchText endpoint already returns all needed data (rating, userRatingCount, etc.)
     const reviewData: ReviewRatingData = {
-      placeId: finalData.id || placeId,
-      name: finalData.displayName?.text || locationName,
-      address: finalData.formattedAddress,
-      rating: finalData.rating,
-      userRatingCount: finalData.userRatingCount,
+      placeId: place.id,
+      name: place.displayName?.text || locationName,
+      address: place.formattedAddress,
+      rating: place.rating,
+      userRatingCount: place.userRatingCount,
     };
 
     return {
