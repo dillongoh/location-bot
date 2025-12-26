@@ -1,4 +1,5 @@
 export async function searchLocation(query: string) {
+  console.log('🔍 searchLocation called with query:', query);
   // Limit results to 10, restrict search to Singapore only
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&polygon_geojson=1&limit=10&countrycodes=sg&accept-language=en`;
 

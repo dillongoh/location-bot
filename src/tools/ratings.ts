@@ -18,6 +18,7 @@ interface ReviewRatingResult {
  * @returns Review rating data including rating and review count
  */
 export async function getReviewRating(locationName: string): Promise<ReviewRatingResult> {
+  console.log('⭐ getReviewRating called with locationName:', locationName);
   try {
     // Note: You'll need to set GOOGLE_PLACES_API_KEY in your environment variables
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
